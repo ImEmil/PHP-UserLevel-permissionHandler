@@ -16,12 +16,12 @@ class vPermissions
 
 	public function registerGroups(vGroups $group)
 	{
-		$this->groups = $group;
+		$this->groups = $group->getGroups();
 	}
 
 	public function addPermissions($permissions = array())
 	{
-		foreach($this->groups->getGroups() as $groupName => $groupArray)
+		foreach($this->groups as $groupName => $groupArray)
 			$this->groupsKeys[$groupArray["group"]] = $groupName;
 
 		foreach($permissions as $rule)
@@ -49,7 +49,7 @@ class vPermissions
 			throw new Permissions_Exception("Permission ({$rule}) is missing from the permissions list (" . join(", ", array_keys($this->permissions)) . ")");
 
 		foreach($this->groups_permissions as $key => $permission) // Loop registered permissions and their groups
-			foreach($this->groups->getGroups() as $groupName => $groupArray) // Loop thro all groups
+			foreach($this->groups as $groupName => $groupArray) // Loop thro all groups
 				if($permission["group"] == $groupArray["group"]) // Is group defined within the groups class with the same name?
 					if($rule == $permission["permission"] && $this->userRank == $permission["group"]) // Does the rule exist and does the current users uid/rank exist with the current group aliases?
 						return true;
@@ -85,7 +85,7 @@ class vPermissions
 	{
 		echo "<pre>";
 		print_r($this->permissions);
-		print_r($this->groups->getGroups());
+		print_r($this->groups);
 		print_r($this->groups_permissions);
 		echo "</pre>";
 	}
