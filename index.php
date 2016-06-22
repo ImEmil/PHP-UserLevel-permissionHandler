@@ -3,16 +3,28 @@ require_once("class.permissions.php");
 require_once("class.groups.php");
 
 $user_rank = 3;
+$vip_rank  = 7;
 
-$permissions = new vPermissions($user_rank); // Initialize with user rank
-$groups = new vGroups([	// (rank_number) => "Rank_name # description"
+$permissions = new vPermissions($user_rank, $vip_rank); // Initialize with user rank and special rank (vip?)
+$groups      = new vGroups;
+
+
+$groups->addGroups([	// (rank_number) => "Rank_name # description"
 	1 => "User # Given a default set of permissions",
 	2 => "Expert # Given a minimal set of moderation permissions",
 	3 => "Admin # Given full permissions"
 ]);
 
-// TODO: Check if permissions exists, check if x exists
-$permissions->registerGroups($groups);
+$groups->addSpecialGroups([
+	6 => "Bronze VIP",
+	7 => "Silver VIP",
+	8 => "Gold VIP # Given a dick",
+]);
+
+// TODO: Add support for special groups permissions | !#!CHECK!#!
+// TODO: Check if permissions exists, check if x exists | !#!CHECK!#!
+
+$permissions->register($groups);
 
 $permissions->addPermissions([ // "Permission_name # description"
 	"hk.login # Allows user to login",
@@ -22,12 +34,19 @@ $permissions->addPermissions([ // "Permission_name # description"
 	"admin.lel"
 ]);
 
-$permissions->setPermissionGroups([	// "Permission_name" => [group_id/rank_number]
-	"hk.login"     => [1, 2, 3],
-	"ban.add"      => [1, 3],
-	"users.delete" => [2, 3],
-	"users.edit"   => 3,
-	"admin.lel"    => 2
+$permissions->setPermissionGroups([
+	"hk.login" => [
+		"groups"         => [1, 2, 3],
+		"special_groups" => [6, 7]
+	],
+	"ban.add" => [
+		"groups"         => [1, 2, 3],
+		"special_groups" => 0
+	],
+	"users.delete" => [
+		"groups"         => [1, 2, 3],
+		"special_groups" => 0
+	]
 ]);
 
 #$permissions->printAll();
