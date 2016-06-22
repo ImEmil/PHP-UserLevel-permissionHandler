@@ -18,7 +18,7 @@ $groups->addGroups([	// (rank_number) => "Rank_name # description"
 $groups->addSpecialGroups([
 	6 => "Bronze VIP",
 	7 => "Silver VIP",
-	8 => "Gold VIP # Given a dick",
+	8 => "Gold VIP # Given a ***",
 ]);
 
 // TODO: Add support for special groups permissions | !#!CHECK!#!
