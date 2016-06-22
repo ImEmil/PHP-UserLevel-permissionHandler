@@ -2,41 +2,59 @@
 
 class vPermissions
 {
-	private $groups;
-	private $userRank;
-	private $defaultGroup       = 1;
-	private $permissions        = [];
-	private $groups_permissions = [];
-	private $groupsKeys			= [];
+	private $groups; // Not in use. kek?
+	private $specialGroups; // Not in use. kek?
 
-	public function __construct($userRank)
+	private $userRank			 = 1;
+	private $specialRank         = 0;
+
+	private $defaultGroup        = 1;
+	private $defaultGroupSpecial = 1;
+
+	private $permissions         = [];
+	private $groups_permissions  = [];
+
+	private $groupsKeys          = [];
+	private $specialGroupKeys    = [];
+
+	public function __construct($userRank, $specialRank = 0)
 	{
-		$this->userRank = $userRank;
+		$this->userRank    = $userRank;
+		$this->specialRank = $specialRank;
 	}
 
-	public function registerGroups(vGroups $group)
-	{
-		$this->groups = $group->getGroups();
-	}
-
-	public function addPermissions($permissions = array())
-	{
-		foreach($this->groups as $groupName => $groupArray)
+	public function register(vGroups $group)
+	{	
+		foreach( $group->getGroups() as $groupName => $groupArray )
 			$this->groupsKeys[$groupArray["group"]] = $groupName;
 
-		foreach($permissions as $rule)
+		foreach( $group->getSpecialGroups() as $groupName => $groupArray )
+			$this->specialGroupKeys[$groupArray["special_group"]] = $groupName;
+	}
+
+	public function addPermissions(array $permissions)
+	{
+		foreach($permissions as $permission)
 		{
-			if(strpos($rule, "#") !== false)
+			if(strpos($permission, "#") !== false)
 			{
-				list($permission, $description) = explode("#", $rule);
-				$this->permissions[trim($permission)] =
+				list($name, $description) = explode("#", $permission);
+				$this->permissions[trim($name)] =
 				[
-					"description" => trim($description),
-					"group"       => $this->defaultGroup
+					"description"   => trim($description),
+					"group"         => $this->defaultGroup,
+					"group_special" => $this->defaultGroupSpecial
 				];
 			}
 			else
-				$this->permissions[trim($rule)] = ["description" => "No description for this permission", "group" => $this->defaultGroup];
+			{
+				$this->permissions[trim($permission)] =
+				[
+					"description"   => "No description for this permission",
+					"group"         => $this->defaultGroup,
+					"group_special" => $this->defaultGroupSpecial
+				];
+			}
 		}
 	}
 
@@ -48,35 +66,61 @@ class vPermissions
 		if(!in_array($rule, array_keys($this->permissions)))
 			throw new Permissions_Exception("Permission ({$rule}) is missing from the permissions list (" . join(", ", array_keys($this->permissions)) . ")");
 
-		foreach($this->groups_permissions as $key => $permission) // Loop registered permissions and their groups
-			foreach($this->groups as $groupName => $groupArray) // Loop thro all groups
-				if($permission["group"] == $groupArray["group"]) // Is group defined within the groups class with the same name?
-					if($rule == $permission["permission"] && $this->userRank == $permission["group"]) // Does the rule exist and does the current users uid/rank exist with the current group aliases?
-						return true;
+		foreach($this->groups_permissions as $key => $data)
+		{
+			if($rule != $data["permission"])
+				continue;
+
+			if(in_array($this->userRank, array_values($data["group"])) || in_array($this->specialRank, array_values($data["group_special"])))
+				return true;
+		}
 
 		return false;
 	}
 
-	public function setPermissionGroups($rules)
+	public function setPermissionGroups(array $rules)
 	{
-		foreach($rules as $permission => $groupKey)
+		foreach($rules as $permission => $groupData)
 		{
-			if(is_array($groupKey))
+			if(!in_array($permission, array_keys($this->permissions)))
+				throw new Permissions_Exception("Permission ({$permission}) is missing from the added permissions list (" . join(", ", array_keys($this->permissions)) . ")");
+
+			if(is_array($groupData)) // has to be an array O_o
 			{
-				foreach($groupKey as $key)
+				$permissionData = [];
+				
+				if(is_array($groupData["groups"]))
 				{
-					if(!in_array($key, array_keys($this->groupsKeys)))
-						throw new Permissions_Exception("Group ({$key}) couldn't be found within the defined groups (" . join(",", array_keys($this->groupsKeys)) . ") [" . join(",", $this->groupsKeys) . "]");
-
-					$this->groups_permissions[] = ["permission" => $permission, "group" => $key];
+					foreach($groupData["groups"] as $groupKey) // Loop through given groups and check if they exist
+						if(!in_array($groupKey, array_keys($this->groupsKeys)))
+							throw new Permissions_Exception("Group ({$groupKey}) couldn't be found within the defined groups (" . join(", ", array_keys($this->groupsKeys)) . ") [" . join(", ", $this->groupsKeys) . "]");
+					
+					$permissionData["group"] = $groupData["groups"];
 				}
-			}
-			else
-			{
-				if(!in_array($groupKey, array_keys($this->groupsKeys)))
-					throw new Permissions_Exception("Group ({$groupKey}) couldn't be found within the defined groups (" . join(",", array_keys($this->groupsKeys)) . ") [" . join(",", $this->groupsKeys) . "]");
+				else
+					$permissionData["group"] = [$groupData["groups"]]; // Todo: Validate if exist like in the loop ^
+				
+				if(is_array($groupData["special_groups"]))
+				{
+					foreach($groupData["special_groups"] as $groupKey) // Loop through given groups and check if they're existing
+						if(!in_array($groupKey, array_keys($this->specialGroupKeys)))
+							throw new Permissions_Exception("SPECIAL Group ({$groupKey}) couldn't be found within the defined groups (" . join(", ", array_keys($this->specialGroupKeys)) . ") [" . join(", ", $this->specialGroupKeys) . "]");
+					
+					$permissionData["group_special"] = $groupData["special_groups"];
+				}
+				else
+					$permissionData["group_special"] = [$groupData["special_groups"]]; // Todo: Validate if exist like in the loop ^
 
-				$this->groups_permissions[] = ["permission" => $permission, "group" => $groupKey];
+				$this->groups_permissions[] =
+				[
+					"permission"    => $permission,
+					"group"         => $permissionData["group"],
+					"group_special" => $permissionData["group_special"]
+				];
+			}
+			else // Else throw error, must be array!
+			{
+
 			}
 		}
 	}
@@ -84,13 +128,10 @@ class vPermissions
 	public function printAll()
 	{
 		echo "<pre>";
-		print_r($this->permissions);
-		print_r($this->groups);
-		print_r($this->groups_permissions);
+		print_r(get_object_vars($this));
 		echo "</pre>";
 	}
 }
-
 
 class Permissions_Exception extends Exception
 {
